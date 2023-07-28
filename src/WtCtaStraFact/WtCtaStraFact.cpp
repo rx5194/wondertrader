@@ -34,7 +34,7 @@ WtStraFact::~WtStraFact()
 
 CtaStrategy* WtStraFact::createStrategy(const char* name, const char* id)
 {
-	if (strcmp(name, "DualThrust") == 0)
+	if (strcmp(name, "WtStraDualThrust") == 0)
 		return new WtStraDualThrust(id);
 
 	return NULL;
@@ -54,9 +54,9 @@ bool WtStraFact::deleteStrategy(CtaStrategy* stra)
 
 void WtStraFact::enumStrategy(FuncEnumStrategyCallback cb)
 {
-	cb(FACT_NAME, "DualThrust", false);
+	cb(FACT_NAME, "WtStraDualThrust", true);
 	cb(FACT_NAME, "PairTradingFci", false);
-	cb(FACT_NAME, "CtaXPA", true);
+	cb(FACT_NAME, "CtaXPA", false);
 }
 
 const char* WtStraFact::getName()

@@ -37,12 +37,12 @@ const char* WtHftStraFact::getName()
 
 void WtHftStraFact::enumStrategy(FuncEnumHftStrategyCallback cb)
 {
-	cb(FACT_NAME, "SimpleHft", true);
+	cb(FACT_NAME, "HftDemoStrategy", true);
 }
 
 HftStrategy* WtHftStraFact::createStrategy(const char* name, const char* id)
 {
-	if(strcmp(name, "SimpleHft") == 0)
+	if(strcmp(name, "HftDemoStrategy") == 0)
 	{
 		return new WtHftStraDemo(id);
 	}

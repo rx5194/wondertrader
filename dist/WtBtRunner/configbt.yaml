@@ -16,8 +16,8 @@ replayer:
     path: ../storage/
     tick: true                     # 是否开启tick回测，HFT回测时必须开启
 env:
-    mocker: exec                     # 回测引擎，cta/hft/sel/uft/exec
-    slippage: 1
+    mocker: hft                     # 回测引擎，cta/hft/sel/uft/exec
+    slippage: 5
 
 # CTA策略配置，当mocker为cta时会读取该配置项
 cta:
@@ -39,12 +39,13 @@ hft:
     module: WtHftStraFact.dll       # 模块名，linux下为xxxx.so
     strategy:                       # 策略信息
         id: hft_if                  # 策略ID，自定义的
-        name: SimpleHft             # 策略名，要和factory中的匹配
+        name: HftDemoStrategy             # 策略名，要和factory中的匹配
         params:                     # 策略初始化参数，这个根据策略的需要提供
             code: CFFEX.IF.HOT
             second: 5
             freq: 10
             offset: 0
+            reserve: 0
             stock: false
 
 # UFT策略配置，当mocker为uft时会读取该配置项
