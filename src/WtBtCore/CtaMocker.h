@@ -73,6 +73,7 @@ private:
 	void	dump_outputs();
 	void	dump_stradata();
 	void	dump_chartdata();
+	void	dump_summary();
 	inline void log_signal(const char* stdCode, double target, double price, uint64_t gentime, const char* usertag = "");
 	inline void	log_trade(const char* stdCode, bool isLong, bool isOpen, uint64_t curTime, double price, double qty, const char* userTag = "", double fee = 0.0, uint32_t barNo = 0);
 	inline void	log_close(const char* stdCode, bool isLong, uint64_t openTime, double openpx, uint64_t closeTime, double closepx, double qty,

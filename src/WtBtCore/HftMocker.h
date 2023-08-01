@@ -179,6 +179,9 @@ private:
 	void	update_dyn_profit(const char* stdCode, WTSTickData* newTick);
 
 	void	dump_outputs();
+	void	dump_stradata();
+	void	dump_chartdata();
+	void	dump_summary();
 	inline void	log_trade(const char* stdCode, bool isLong, bool isOpen, uint64_t curTime, double price, double qty, double fee, const char* userTag);
 	inline void	log_close(const char* stdCode, bool isLong, uint64_t openTime, double openpx, uint64_t closeTime, double closepx, double qty,
 		double profit, double maxprofit, double maxloss, double totalprofit, const char* enterTag, const char* exitTag);
@@ -335,8 +338,15 @@ protected:
 	bool			_hook_valid;	//这是根据是否是异步回测模式而确定钩子是否可用
 	std::atomic<bool>	_resumed;	//临时变量，用于控制状态
 
+
+	//是否对回测结果持久化
+	uint32_t		_cur_tdate;
+
 	//tick订阅列表
 	faster_hashset<std::string> _tick_subs;
+
+	std::string		_chart_code;
+	std::string		_chart_period = "0";
 
 	typedef WTSHashMap<std::string>	TickCache;
 	TickCache*	_ticks;

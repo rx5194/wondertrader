@@ -514,6 +514,8 @@ void HisDataReplayer::dump_btstate(const char* stdCode, WTSKlinePeriod period, u
 		std::stringstream ss;
 		if (period == KP_DAY)
 			ss << "d";
+		else if (period == KP_Tick)
+			ss << "tick";
 		else if (period == KP_Minute1)
 			ss << "m" << times;
 		else
@@ -727,11 +729,16 @@ void HisDataReplayer::run(bool bNeedDump/* = false*/)
 
 void HisDataReplayer::run_by_ticks(bool bNeedDump /* = false */)
 {
+	TimeUtils::Ticker ticker;
 	//如果没有订阅K线，且tick回测是打开的，则按照每日的tick进行回放
 	uint32_t edt = (uint32_t)(_end_time / 10000);
 	uint32_t etime = (uint32_t)(_end_time % 10000);
 	uint64_t end_tdate = _bd_mgr.calcTradingDate(DEFAULT_SESSIONID, edt, etime, true);
 
+	if (bNeedDump)
+	{
+		dump_btstate(_tick_sub_map.begin()->first.c_str(), KP_Tick, 0, _cur_tdate, _end_time, 100.0, ticker.nano_seconds());
+	}
 	while (_cur_tdate <= end_tdate && !_terminated)
 	{
 		if (checkAllTicks(_cur_tdate))

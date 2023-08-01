@@ -300,6 +300,12 @@ void HftMocker::handle_replay_done()
 {
 	dump_outputs();
 
+	dump_stradata();
+
+	dump_chartdata();
+
+	dump_summary();
+
 	this->on_bactest_end();
 }
 
@@ -484,6 +490,7 @@ void HftMocker::on_init()
 
 void HftMocker::on_session_begin(uint32_t curTDate)
 {
+	_cur_tdate = curTDate;
 	//每个交易日开始，要把冻结持仓置零
 	for (auto& it : _pos_map)
 	{
@@ -838,6 +845,9 @@ std::string HftMocker::stra_get_rawcode(const char* stdCode)
 
 WTSKlineSlice* HftMocker::stra_get_bars(const char* stdCode, const char* period, uint32_t count)
 {
+	_chart_code = stdCode;
+	_chart_period = period;
+
 	thread_local static char basePeriod[2] = { 0 };
 	basePeriod[0] = period[0];
 	uint32_t times = 1;
@@ -849,6 +859,7 @@ WTSKlineSlice* HftMocker::stra_get_bars(const char* stdCode, const char* period,
 
 WTSTickSlice* HftMocker::stra_get_ticks(const char* stdCode, uint32_t count)
 {
+	_chart_code = stdCode;
 	return _replayer->get_tick_slice(stdCode, count);
 }
 
@@ -949,6 +960,7 @@ uint32_t HftMocker::stra_get_secs()
 
 void HftMocker::stra_sub_ticks(const char* stdCode)
 {
+	_chart_code = stdCode;
 	/*
 	 *	By Wesley @ 2022.03.01
 	 *	主动订阅tick会在本地记一下
@@ -1055,6 +1067,157 @@ void HftMocker::dump_outputs()
 		filename += "ud_";
 		filename += _name;
 		filename += ".json";
+
+		rj::StringBuffer sb;
+		rj::PrettyWriter<rj::StringBuffer> writer(sb);
+		root.Accept(writer);
+		StdFile::write_file_content(filename.c_str(), sb.GetString());
+	}
+}
+
+void HftMocker::dump_stradata()
+{
+	rj::Document root(rj::kObjectType);
+
+	{//持仓数据保存
+		rj::Value jPos(rj::kArrayType);
+
+		rj::Document::AllocatorType &allocator = root.GetAllocator();
+
+		for (auto it = _pos_map.begin(); it != _pos_map.end(); it++)
+		{
+			const char* stdCode = it->first.c_str();
+			const PosInfo& pInfo = it->second;
+
+			rj::Value pItem(rj::kObjectType);
+			pItem.AddMember("code", rj::Value(stdCode, allocator), allocator);
+			pItem.AddMember("volume", pInfo._volume, allocator);
+			pItem.AddMember("closeprofit", pInfo._closeprofit, allocator);
+			pItem.AddMember("dynprofit", pInfo._dynprofit, allocator);
+
+			rj::Value details(rj::kArrayType);
+			for (auto dit = pInfo._details.begin(); dit != pInfo._details.end(); dit++)
+			{
+				const DetailInfo& dInfo = *dit;
+				rj::Value dItem(rj::kObjectType);
+				dItem.AddMember("long", dInfo._long, allocator);
+				dItem.AddMember("price", dInfo._price, allocator);
+				dItem.AddMember("volume", dInfo._volume, allocator);
+				dItem.AddMember("opentime", dInfo._opentime, allocator);
+				dItem.AddMember("opentdate", dInfo._opentdate, allocator);
+
+				dItem.AddMember("profit", dInfo._profit, allocator);
+				dItem.AddMember("maxprofit", dInfo._max_profit, allocator);
+				dItem.AddMember("maxloss", dInfo._max_loss, allocator);
+
+				details.PushBack(dItem, allocator);
+			}
+
+			pItem.AddMember("details", details, allocator);
+
+			jPos.PushBack(pItem, allocator);
+		}
+
+		root.AddMember("positions", jPos, allocator);
+	}
+
+	{//资金保存
+		rj::Value jFund(rj::kObjectType);
+		rj::Document::AllocatorType &allocator = root.GetAllocator();
+
+		jFund.AddMember("total_profit", _fund_info._total_profit, allocator);
+		jFund.AddMember("total_dynprofit", _fund_info._total_dynprofit, allocator);
+		jFund.AddMember("total_fees", _fund_info._total_fees, allocator);
+		jFund.AddMember("tdate", _cur_tdate, allocator);
+
+		root.AddMember("fund", jFund, allocator);
+	}
+
+	//信号保存
+
+	//条件单保存
+
+	{
+		std::string folder = WtHelper::getOutputDir();
+		folder += _name;
+		folder += "/";
+
+		if (!StdFile::exists(folder.c_str()))
+			boost::filesystem::create_directories(folder.c_str());
+
+		std::string filename = folder;
+		filename += _name;
+		filename += ".json";
+
+		rj::StringBuffer sb;
+		rj::PrettyWriter<rj::StringBuffer> writer(sb);
+		root.Accept(writer);
+		StdFile::write_file_content(filename.c_str(), sb.GetString());
+	}
+}
+
+void HftMocker::dump_chartdata()
+{
+	rj::Document root(rj::kObjectType);
+	rj::Document::AllocatorType &allocator = root.GetAllocator();
+
+	rj::Value klineItem(rj::kObjectType);
+	if (_chart_code.empty())
+	{
+		klineItem.AddMember("code", rj::Value(_chart_code.c_str(), allocator), allocator);
+		klineItem.AddMember("period", rj::Value(_chart_period.c_str(), allocator), allocator);
+	}
+
+	root.AddMember("kline", klineItem, allocator);
+
+	{
+		std::string folder = WtHelper::getOutputDir();
+		folder += _name;
+		folder += "/";
+
+		if (!StdFile::exists(folder.c_str()))
+			boost::filesystem::create_directories(folder.c_str());
+
+		std::string filename = folder;
+		filename += "btchart.json";
+
+		rj::StringBuffer sb;
+		rj::PrettyWriter<rj::StringBuffer> writer(sb);
+		root.Accept(writer);
+		StdFile::write_file_content(filename.c_str(), sb.GetString());
+
+		filename = folder;
+		filename += "indice.csv";
+		std::string content = "bartime,index_name,line_name,value\n";
+		StdFile::write_file_content(filename.c_str(), (void*)content.c_str(), content.size());
+
+		filename = folder;
+		filename += "marks.csv";
+		content = "bartime,price,icon,tag\n";
+		StdFile::write_file_content(filename.c_str(), (void*)content.c_str(), content.size());
+	}
+}
+
+void HftMocker::dump_summary()
+{
+	rj::Document root(rj::kObjectType);
+	rj::Document::AllocatorType &allocator = root.GetAllocator();
+
+
+
+
+	root.AddMember("name", rj::Value(_name.c_str(), allocator), allocator);
+
+	{
+		std::string folder = WtHelper::getOutputDir();
+		folder += _name;
+		folder += "/";
+
+		if (!StdFile::exists(folder.c_str()))
+			boost::filesystem::create_directories(folder.c_str());
+
+		std::string filename = folder;
+		filename += "summary.json";
 
 		rj::StringBuffer sb;
 		rj::PrettyWriter<rj::StringBuffer> writer(sb);

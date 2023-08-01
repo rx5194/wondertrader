@@ -334,6 +334,34 @@ void CtaMocker::dump_chartdata()
 	}
 }
 
+void CtaMocker::dump_summary()
+{
+	rj::Document root(rj::kObjectType);
+	rj::Document::AllocatorType &allocator = root.GetAllocator();
+
+
+
+	
+	root.AddMember("name", rj::Value(_name.c_str(), allocator), allocator);
+	if (_persist_data)
+	{
+		std::string folder = WtHelper::getOutputDir();
+		folder += _name;
+		folder += "/";
+
+		if (!StdFile::exists(folder.c_str()))
+			boost::filesystem::create_directories(folder.c_str());
+
+		std::string filename = folder;
+		filename += "summary.json";
+
+		rj::StringBuffer sb;
+		rj::PrettyWriter<rj::StringBuffer> writer(sb);
+		root.Accept(writer);
+		StdFile::write_file_content(filename.c_str(), sb.GetString());
+	}
+}
+
 void CtaMocker::dump_outputs()
 {
 	if (!_persist_data)
@@ -675,6 +703,8 @@ void CtaMocker::handle_replay_done()
 	dump_stradata();
 
 	dump_chartdata();
+
+	dump_summary();
 
 	if (_has_hook && _hook_valid)
 	{
