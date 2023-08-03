@@ -1,6 +1,6 @@
 #include "WtHftStraFact.h"
 #include "WtHftStraDemo.h"
-
+#include "WtHftStraOrderBook.h"
 #include <string.h>
 
 const char* FACT_NAME = "WtHftStraFact";
@@ -37,12 +37,12 @@ const char* WtHftStraFact::getName()
 
 void WtHftStraFact::enumStrategy(FuncEnumHftStrategyCallback cb)
 {
-	cb(FACT_NAME, "HftDemoStrategy", true);
+	cb(FACT_NAME, "WtHftStraOrderBook", true);
 }
 
 HftStrategy* WtHftStraFact::createStrategy(const char* name, const char* id)
 {
-	if(strcmp(name, "HftDemoStrategy") == 0)
+	if(strcmp(name, "WtHftStraOrderBook") == 0)
 	{
 		return new WtHftStraDemo(id);
 	}

@@ -161,10 +161,12 @@
   <ItemGroup>
     <ClCompile Include="WtHftStraDemo.cpp" />
     <ClCompile Include="WtHftStraFact.cpp" />
+    <ClCompile Include="WtHftStraOrderBook.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WtHftStraDemo.h" />
     <ClInclude Include="WtHftStraFact.h" />
+    <ClInclude Include="WtHftStraOrderBook.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
