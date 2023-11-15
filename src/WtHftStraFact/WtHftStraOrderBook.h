@@ -8,6 +8,16 @@
 #include <unordered_map>
 #include "../Includes/WTSDataDef.hpp"
 
+struct StrategyDir
+{
+	int marketDir;
+	int lastDir;
+	int newDir;
+	StrategyDir() {
+		memset(this, 0, sizeof(StrategyDir));
+	}
+};
+
 class WtHftStraOrderBook : public HftStrategy
 {
 public:
@@ -18,6 +28,11 @@ private:
 	void	check_orders();
 	int		benchInstDir();
 	void	updateDistribution(WTSTickStruct& marketData);
+
+	void	stopProfit();
+	void	stopLoss();
+	void	buy(IHftStraCtx* ctx, uint32_t num);
+	void	sell(IHftStraCtx* ctx, uint32_t num);
 
 public:
 	virtual const char* getName() override;
@@ -67,8 +82,7 @@ private:
 	uint32_t		_last_calc_time;
 	uint32_t		_cancel_cnt;
 
-	int				marketDir;
-	int				strategyDir;
+	StrategyDir		strategyDir;
 	WTSTickStruct	benchLasttick;
 	std::map<int, double[2], std::greater<int>>		distributionOverTime;
 };

@@ -2,8 +2,10 @@
   "ExpandedNodes": [
     "",
     "\\demos",
-    "\\demos\\WtHftStraFact"
+    "\\demos\\WtHftStraFact",
+    "\\src",
+    "\\src\\WtHftStraFact"
   ],
-  "SelectedNode": "\\demos\\WtHftStraFact\\WtHftStraDemo.cpp",
+  "SelectedNode": "\\demos\\WtHftStraFact\\WtHftStraFact.vcxproj.filters",
   "PreviewInSolutionExplorer": false
 }

@@ -40,6 +40,39 @@ namespace rj = rapidjson;
 
 using namespace std;
 
+namespace
+{
+	string getMarketDataDir(const char* stdCode, uint32_t uDate, const std::string _base_dir)
+	{
+		std::stringstream dir, file;
+		dir << _base_dir << "bin/ticks/";
+		std::string path = dir.str();
+		if (!StdFile::exists(path.c_str()))
+			boost::filesystem::create_directories(path.c_str());
+
+		char stdcode[30];
+		strcpy(stdcode, stdCode);
+		char out[3][10];
+		memset(out, '\0', sizeof(out));
+		int i = 0;
+		auto pch = strtok(stdcode, ".");
+		while (pch != NULL)
+		{
+			strcpy(out[i], pch);
+			i++;
+			pch = strtok(NULL, ".");
+		}
+		file << out[0] << "." << out[1];
+
+		WTSHotMgr hotMgr;
+		hotMgr.loadCustomRules(out[2], "../common/hots.json");
+		auto code = hotMgr.getCustomRawCode(out[2], file.str().c_str(), uDate);
+
+		dir << out[0] << "." << code << "_tick_" << uDate << ".dsb";
+		return dir.str();
+	}
+}
+
 /*
  *	处理块数据
  */
@@ -3262,13 +3295,7 @@ bool HisDataReplayer::cacheRawTicksFromCSV(const std::string& key, const char* s
 	if (strlen(stdCode) == 0)
 		return false;
 
-	std::stringstream ss;
-	ss << _base_dir << "bin/ticks/";
-	std::string path = ss.str();
-	if (!StdFile::exists(path.c_str()))
-		boost::filesystem::create_directories(path.c_str());
-	ss << stdCode << "_tick_" << uDate << ".dsb";
-	std::string filename = ss.str();
+	string filename = getMarketDataDir(stdCode, uDate, _base_dir);
 	if (StdFile::exists(filename.c_str()))
 	{
 		//如果有格式化的历史数据文件, 则直接读取

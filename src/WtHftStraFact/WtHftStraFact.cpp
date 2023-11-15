@@ -44,7 +44,7 @@ HftStrategy* WtHftStraFact::createStrategy(const char* name, const char* id)
 {
 	if(strcmp(name, "WtHftStraOrderBook") == 0)
 	{
-		return new WtHftStraDemo(id);
+		return new WtHftStraOrderBook(id);
 	}
 
 

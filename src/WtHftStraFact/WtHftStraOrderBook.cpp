@@ -21,8 +21,6 @@ WtHftStraOrderBook::WtHftStraOrderBook(const char* id)
 	, imbalanceLevel(4)
 	, imbalanceRatio(3.0)
 	, penaltyFactor(2.0)
-	, marketDir(0)
-	, strategyDir(0)
 {
 }
 
@@ -96,69 +94,134 @@ void WtHftStraOrderBook::on_tick(IHftStraCtx* ctx, const char* code, WTSTickData
 
 	updateDistribution(newTick->getTickStruct());
 	benchLasttick = newTick->getTickStruct();
-	marketDir = benchInstDir();
+	strategyDir.marketDir = benchInstDir();
 
 
-	uint32_t curMin = newTick->actiontime() / 1000;	//actiontime是带毫秒的,要取得s,则需要除以1000
-	if (curMin - _last_calc_time > observationTime)
+	uint32_t curSec = newTick->actiontime() / 1000;	//actiontime是带毫秒的,要取得s,则需要除以1000
+	if (curSec - _last_calc_time > observationTime)
 	{
-		if (strategyDir * marketDir >= 0)
+		if (strategyDir.lastDir * strategyDir.marketDir >= 0)
 		{
-			strategyDir += marketDir;
+			strategyDir.newDir += strategyDir.marketDir;
 		}
-		else if (marketDir > 0)
+		else if (strategyDir.marketDir > 0)
 		{
-			strategyDir += penaltyFactor;
+			strategyDir.newDir += penaltyFactor;
 		}
 		else
 		{
-			strategyDir -= penaltyFactor;
+			strategyDir.newDir -= penaltyFactor;
 		}
-
-		_last_calc_time = curMin;
+		_last_calc_time = curSec;
 		for (auto iter = distributionOverTime.begin(); iter != distributionOverTime.end(); iter = distributionOverTime.erase(iter)) {}
 	}
-
-	uint64_t now = TimeUtils::makeTime(ctx->stra_get_date(), ctx->stra_get_time() * 100000 + ctx->stra_get_secs());
-	if (strategyDir != 0)
+	
+	double curPos = ctx->stra_get_position(code);
+	if (strategyDir.marketDir != 0 && curSec < 151000)
 	{
-		double curPos = ctx->stra_get_position(code);
-		double price = newTick->price();
-		WTSCommodityInfo* cInfo = ctx->stra_get_comminfo(code);
-
-		if(strategyDir > 0  && curPos <= 0)
-		{//正向信号,且当前仓位小于等于0
-			//最新价+2跳下单
-			double targetPx = price + cInfo->getPriceTick() * _offset;
-			auto ids = ctx->stra_buy(code, targetPx, _unit, "enterlong");
-
-			_mtx_ords.lock();
-			for( auto localid : ids)
-			{
-				_orders.insert(localid);
-			}
-			_mtx_ords.unlock();
-			_last_entry_time = now;
-		}
-		else if (strategyDir < 0 )
+		if(curPos == 0)
 		{
-			double targetPx = price - cInfo->getPriceTick()*_offset;
-			auto ids = ctx->stra_sell(code, targetPx, _unit, "entershort");
-
-			_mtx_ords.lock();
-			for (auto localid : ids)
+			if (strategyDir.lastDir == 0 && strategyDir.newDir > 0)
 			{
-				_orders.insert(localid);
+				buy(ctx, _unit);
 			}
-			_mtx_ords.unlock();
-			_last_entry_time = now;
+			else if (strategyDir.lastDir == 0 && strategyDir.newDir < 0)
+			{
+				sell(ctx, _unit);
+			}
+		}
+		else if (curPos > 0)
+		{
+			if (strategyDir.lastDir > 0 && strategyDir.newDir < 0)
+			{
+				sell(ctx, curPos);
+				strategyDir.newDir = 0;
+			}
+			else if (strategyDir.lastDir = 0 && strategyDir.newDir < 0)
+			{
+				sell(ctx, _unit + curPos);
+			}
+		}
+		else if(curPos < 0)
+		{
+			if (strategyDir.lastDir < 0 && strategyDir.newDir > 0)
+			{
+				buy(ctx, -curPos);
+				strategyDir.newDir = 0;
+			}
+			else if (strategyDir.lastDir = 0 && strategyDir.newDir > 0)
+			{
+				buy(ctx, _unit - curPos);
+			}
 		}
 	}
+
+	if (curPos != 0 && curSec >= 151000 )
+	{
+		if (curPos > 0)
+		{
+			sell(ctx, curPos);
+		}
+		else
+		{
+			buy(ctx, -curPos);
+		}
+	}
+
+	strategyDir.lastDir = strategyDir.newDir;
+//	stopProfit();
+//	stopLoss();
 }
+
+void WtHftStraOrderBook::stopProfit()
+{
+
+}
+
+void WtHftStraOrderBook::stopLoss()
+{
+
+}
+
+void WtHftStraOrderBook::buy(IHftStraCtx* ctx, uint32_t num)
+{
+	uint64_t now = TimeUtils::makeTime(ctx->stra_get_date(), ctx->stra_get_time() * 100000 + ctx->stra_get_secs());
+
+	WTSCommodityInfo* cInfo = ctx->stra_get_comminfo(benchLasttick.code);
+	double targetPx = benchLasttick.price + cInfo->getPriceTick() * _offset;
+	auto ids = ctx->stra_buy(benchLasttick.code, targetPx, num, "enterlong");
+
+	_mtx_ords.lock();
+	for (auto localid : ids)
+	{
+		_orders.insert(localid);
+	}
+	_mtx_ords.unlock();
+	_last_entry_time = now;
+}
+
+void WtHftStraOrderBook::sell(IHftStraCtx* ctx, uint32_t num)
+{
+	uint64_t now = TimeUtils::makeTime(ctx->stra_get_date(), ctx->stra_get_time() * 100000 + ctx->stra_get_secs());
+
+	WTSCommodityInfo* cInfo = ctx->stra_get_comminfo(benchLasttick.code);
+	double targetPx = benchLasttick.price - cInfo->getPriceTick()*_offset;
+	auto ids = ctx->stra_sell(benchLasttick.code, targetPx, num, "entershort");
+
+	_mtx_ords.lock();
+	for (auto localid : ids)
+	{
+		_orders.insert(localid);
+	}
+	_mtx_ords.unlock();
+	_last_entry_time = now;
+}
+
 void WtHftStraOrderBook::on_bar(IHftStraCtx* ctx, const char* code, const char* period, uint32_t times, WTSBarStruct* newBar)
 {
 
 }
+
 void WtHftStraOrderBook::check_orders()
 {
 	if (!_orders.empty() && _last_entry_time != UINT64_MAX)
